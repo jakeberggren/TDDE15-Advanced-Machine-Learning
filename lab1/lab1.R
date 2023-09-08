@@ -73,18 +73,18 @@ true_struct <- model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True 
 bn_param <- bn.fit(x = bn_struct, data = train)
 true_param <- bn.fit(x = true_struct, data = train)
 
-# Transform into gRain object and compile into function tree.
+# Transform into gRain object and compile.
 grain_obj <- as.grain(bn_param)
-function_tree <- compile(grain_obj)
+bn_compiled <- compile(grain_obj)
 
 true_grain_obj <- as.grain(true_param) 
-true_function_tree <- compile(true_grain_obj) 
+true_bn_compiled <- compile(true_grain_obj) 
 
 # Custom predict function
-predict_bn <- function(func_tree) {
+predict_bn <- function(obj) {
   pred <- c()
   for (i in 1:nrow(test)) {
-    evidence <- setEvidence(object = func_tree, 
+    evidence <- setEvidence(object = obj, 
                             nodes = c("A", "T", "L", "B", "E", "X", "D"), 
                             states = as.character(unlist(test[i,-2])))
     query <- querygrain(evidence, nodes = c("S"))$S
@@ -94,8 +94,8 @@ predict_bn <- function(func_tree) {
 }
 
 # Confusion matrices
-table(predict_bn(function_tree), test$S)
-table(predict_bn(true_function_tree), test$S) # CM from True Asia BN
+table(predict_bn(bn_compiled), test$S)
+table(predict_bn(true_bn_compiled), test$S) # CM from True Asia BN
 
 ###################################
 
@@ -107,13 +107,13 @@ mb <- mb(bn_param, c("S"))
 mb_true <- mb(true_param, c("S"))
 
 # Custom predict function
-predict_mb <- function(func_tree) {
+predict_mb <- function(obj, nodes) {
   pred <- c()
   for (i in 1:nrow(test)) {
-    evidence <- setEvidence(object = func_tree, 
-                            nodes = c("L", "B"), 
+    evidence <- setEvidence(object = obj, 
+                            nodes = nodes, 
                             states = as.character(unlist(
-                              subset(test, select = c("L", "B"))[i,])))
+                              subset(test, select = nodes)[i,])))
     query <- querygrain(evidence, nodes = c("S"))$S
     pred[i] <- ifelse(query["yes"] > 0.5, "yes", "no")
   }
@@ -121,8 +121,8 @@ predict_mb <- function(func_tree) {
 }
 
 # Predict and create confusion matrices.
-table(predict_mb(function_tree), test$S)
-table(predict_mb(true_function_tree), test$S)
+table(predict_mb(bn_compiled, mb), test$S)
+table(predict_mb(true_bn_compiled, mb_true), test$S)
 
 ###################################
 
@@ -132,13 +132,13 @@ table(predict_mb(true_function_tree), test$S)
 # the function naive.bayes from the bnlearn package.
 
 # Naive Bayes Structure
-nb_struct <- model2network("[S][A|S][B|S][D|S][E|S][L|S][T|S][X|S]")
-nb_param <- bn.fit(x = nb_struct, data = train) # Parameters from training data
+nb <- model2network("[S][A|S][B|S][D|S][E|S][L|S][T|S][X|S]")
+nb <- bn.fit(x = nb, data = train) # Parameters from training data
 
-# Transform into gRain object and compile into function tree.
-nb_grain <- as.grain(nb_param)
-nb_function_tree <- compile(nb_grain)
+# Transform into gRain object and compile.
+nb <- as.grain(nb)
+nb <- compile(nb)
 
 # Confusion matrix
-table(predict_bn(nb_function_tree), test$S)
+table(predict_bn(nb), test$S)
 
